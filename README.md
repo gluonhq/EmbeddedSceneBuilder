@@ -1,2 +1,3 @@
-# EmbeddedSceneBuilder
-JavaFX container that includes Scene Builder Kit
+# EmbeddedSceneBuilderDemo
+
+JavaFX simple demo application that embeds Scene Builder Kit

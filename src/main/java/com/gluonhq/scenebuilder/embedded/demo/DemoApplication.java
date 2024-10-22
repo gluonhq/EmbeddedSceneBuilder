@@ -81,7 +81,7 @@ public class DemoApplication extends Application {
         BorderPane root = new BorderPane(sceneBuilderPane);
         root.setTop(top);
         Scene scene = new Scene(root, 1000, 600);
-        stage.setTitle("Hello Scene Builder Embedded!");
+        stage.setTitle("Hello Embedded Scene Builder Demo!");
         stage.setScene(scene);
         stage.show();
 
