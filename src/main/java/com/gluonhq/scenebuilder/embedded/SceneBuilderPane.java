@@ -246,6 +246,7 @@ public class SceneBuilderPane extends StackPane {
         Parent selectionBarPane = new SelectionBarController(editorController).getPanelRoot();
         selectionBarPane.getStyleClass().add("selection-bar-container");
         Node contentView = contentPanelController.getPanelRoot();
+        VBox.setVgrow(contentView, Priority.ALWAYS);
         VBox contentBox = new VBox(selectionBarPane, contentView);
         return contentBox;
     }
@@ -294,6 +295,7 @@ public class SceneBuilderPane extends StackPane {
         inspectorViewByPropertyType.setOnAction(e -> inspectorPanelController.setViewMode(InspectorPanelController.ViewMode.PROPERTY_TYPE));
         inspectorSearchController.textProperty().subscribe((ov, nv) -> inspectorPanelController.setSearchPattern(nv));
         Node inspectorView = inspectorPanelController.getPanelRoot();
+        VBox.setVgrow(inspectorView, Priority.ALWAYS);
         VBox rightBox = new VBox(hBoxInspectorTop, inspectorView);
         SplitPane.setResizableWithParent(rightBox, Boolean.FALSE);
         return rightBox;
