@@ -37,3 +37,5 @@ git clone https://github.com/gluonhq/EmbeddedSceneBuilderDemo.git
 cd EmbeddedSceneBuilderDemo
 mvn javafx:run
 ```
+
+<img src="assets/embeddedSBDemo.png" width="600" alt="embeddedSBDemo"/>
