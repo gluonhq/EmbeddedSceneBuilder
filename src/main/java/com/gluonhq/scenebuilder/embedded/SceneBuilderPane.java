@@ -87,7 +87,6 @@ public class SceneBuilderPane extends StackPane {
     public SceneBuilderPane() {
         Node mainPane = createSBPane();
         getStyleClass().add("theme-presets");
-        getStylesheets().add(SceneBuilderPane.class.getResource("sb.css").toExternalForm());
         getChildren().addAll(mainPane);
         sbController = new SBController(this);
 
@@ -134,6 +133,7 @@ public class SceneBuilderPane extends StackPane {
             @Override
             public void invalidated(Observable observable) {
                 if (getScene() != null) {
+                    getScene().getStylesheets().add(SceneBuilderPane.class.getResource("sb.css").toExternalForm());
                     getScene().windowProperty().addListener(new InvalidationListener() {
                         @Override
                         public void invalidated(Observable observable) {
