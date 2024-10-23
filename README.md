@@ -1,6 +1,6 @@
 # EmbeddedSceneBuilderDemo
 
-JavaFX simple demo application that embeds Scene Builder Kit
+Simple JavaFX demo application that embeds Scene Builder Kit
 
 ## Components
 
@@ -10,11 +10,11 @@ It is a `StackPane` that holds the Scene Builder Kit integration by adding a `Sp
 - to the left, the library section and the document section (that holds hierarchy and controller sections)
 - center: the content area
 - to the right, the inspector section
-in the same way that the Scene Builder application does.
+in the same way the Scene Builder application does.
 
 ### SBController
 
-Holds the operations that can be done over the SceneBuilderPane, namely the handlers to some usual actions:
+Holds the operations that can be done in the SceneBuilderPane, namely the handlers of some usual actions:
 - Copy, Cut, Paste, Duplicate
 - Select all, Select none, Delete
 - Undo, Redo
