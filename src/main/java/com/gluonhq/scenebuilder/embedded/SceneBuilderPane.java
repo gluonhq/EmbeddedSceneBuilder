@@ -43,6 +43,7 @@ import com.oracle.javafx.scenebuilder.kit.library.BuiltinLibrary;
 import com.oracle.javafx.scenebuilder.kit.library.Library;
 import com.oracle.javafx.scenebuilder.kit.library.user.UserLibrary;
 import com.oracle.javafx.scenebuilder.kit.preferences.MavenPreferences;
+import com.oracle.javafx.scenebuilder.kit.selectionbar.SelectionBarController;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.event.ActionEvent;
@@ -53,10 +54,15 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TitledPane;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -147,20 +153,77 @@ public class SceneBuilderPane extends StackPane {
             }
         });
 
+        SplitPane mainPane = new SplitPane(createLeftSide(), createCenter(), createRightSide());
+        mainPane.setDividerPositions(0.25, 0.75);
+        return mainPane;
+    }
+
+    private Node createLeftSide() {
+        // Library
         Label libraryLabel = new Label(resources.getString("left.library"));
         libraryLabel.setMinWidth(Double.NEGATIVE_INFINITY);
         libraryLabel.setMaxWidth(Double.NEGATIVE_INFINITY);
         HBox.setHgrow(libraryLabel, Priority.NEVER);
-        Parent searchPane = new SearchController(editorController).getPanelRoot();
+        SearchController librarySearchController = new SearchController(editorController);
+        Parent searchPane = librarySearchController.getPanelRoot();
         HBox.setHgrow(searchPane, Priority.ALWAYS);
-        HBox hBoxTop = new HBox(libraryLabel, searchPane);
+        Region region = new Region();
+        region.getStyleClass().add("cog-shape");
+        ToggleGroup libraryDisplayOptionTG = new ToggleGroup();
+        MenuButton libraryMenuButton = new MenuButton(null, region);
+        RadioMenuItem libraryViewAsList = new RadioMenuItem(resources.getString("library.panel.menu.view.list"));
+        libraryViewAsList.setToggleGroup(libraryDisplayOptionTG);
+        RadioMenuItem libraryViewAsSections = new RadioMenuItem(resources.getString("library.panel.menu.view.sections"));
+        libraryViewAsSections.setToggleGroup(libraryDisplayOptionTG);
+        libraryViewAsSections.setSelected(true);
+        libraryMenuButton.getItems().addAll(libraryViewAsList, libraryViewAsSections);
+        HBox hBoxTop = new HBox(libraryLabel, searchPane, libraryMenuButton);
         hBoxTop.getStyleClass().add("panel-header");
         hBoxTop.setAlignment(Pos.CENTER_LEFT);
-        Node libraryView = new LibraryPanelController(editorController, new MavenPreferences()).getPanelRoot();
+        LibraryPanelController libraryPanelController = new LibraryPanelController(editorController, new MavenPreferences());
+        librarySearchController.textProperty().subscribe((ov, nv) -> libraryPanelController.setSearchPattern(nv));
+        libraryViewAsList.setOnAction(e -> {
+            if (libraryPanelController.getDisplayMode() != LibraryPanelController.DISPLAY_MODE.SEARCH) {
+                libraryPanelController.setDisplayMode(LibraryPanelController.DISPLAY_MODE.LIST);
+            } else {
+                libraryPanelController.setPreviousDisplayMode(LibraryPanelController.DISPLAY_MODE.LIST);
+            }
+        });
+        libraryViewAsSections.setOnAction(e -> {
+            if (libraryPanelController.getDisplayMode() != LibraryPanelController.DISPLAY_MODE.SEARCH) {
+                libraryPanelController.setDisplayMode(LibraryPanelController.DISPLAY_MODE.SECTIONS);
+            } else {
+                libraryPanelController.setPreviousDisplayMode(LibraryPanelController.DISPLAY_MODE.SECTIONS);
+            }
+        });
+        Node libraryView = libraryPanelController.getPanelRoot();
         VBox vBoxTop = new VBox(hBoxTop, libraryView);
 
+        // Document
         Label documentLabel = new Label(resources.getString("left.document"));
-        HBox hBoxBottom = new HBox(documentLabel);
+
+        Region docRegion = new Region();
+        docRegion.getStyleClass().add("cog-shape");
+        ToggleGroup hierarchyDisplayOptionTG = new ToggleGroup();
+        MenuButton hierarchyMenuButton = new MenuButton(null, docRegion);
+        RadioMenuItem showInfoMenuItem = new RadioMenuItem(resources.getString("hierarchy.show.info"));
+        showInfoMenuItem.setToggleGroup(hierarchyDisplayOptionTG);
+        showInfoMenuItem.setSelected(true);
+        RadioMenuItem showFxIdMenuItem = new RadioMenuItem(resources.getString("hierarchy.show.fxid"));
+        showFxIdMenuItem.setToggleGroup(hierarchyDisplayOptionTG);
+        RadioMenuItem showNodeIdMenuItem = new RadioMenuItem(resources.getString("hierarchy.show.nodeid"));
+        showNodeIdMenuItem.setToggleGroup(hierarchyDisplayOptionTG);
+        hierarchyMenuButton.getItems().addAll(showInfoMenuItem, showFxIdMenuItem, showNodeIdMenuItem);
+        showInfoMenuItem.setOnAction(e ->
+                hierarchyPanelController.setDisplayOption(AbstractHierarchyPanelController.DisplayOption.INFO));
+        showFxIdMenuItem.setOnAction(e ->
+                hierarchyPanelController.setDisplayOption(AbstractHierarchyPanelController.DisplayOption.FXID));
+        showNodeIdMenuItem.setOnAction(e ->
+                hierarchyPanelController.setDisplayOption(AbstractHierarchyPanelController.DisplayOption.NODEID));
+
+        Region span = new Region();
+        HBox.setHgrow(span, Priority.ALWAYS);
+        HBox hBoxBottom = new HBox(documentLabel, span, hierarchyMenuButton);
         hBoxBottom.getStyleClass().add("panel-header");
         hBoxBottom.setAlignment(Pos.CENTER_LEFT);
 
@@ -171,21 +234,69 @@ public class SceneBuilderPane extends StackPane {
         Accordion accordion = new Accordion(hierarchyPane, controllerPane);
         accordion.setExpandedPane(hierarchyPane);
         VBox vBoxBottom = new VBox(hBoxBottom, accordion);
+
         SplitPane leftPane = new SplitPane(vBoxTop, vBoxBottom);
         leftPane.setOrientation(Orientation.VERTICAL);
         leftPane.setDividerPositions(0.5, 0.5);
         SplitPane.setResizableWithParent(leftPane, Boolean.FALSE);
+        return leftPane;
+    }
 
-        //center
+    private Node createCenter() {
+        Parent selectionBarPane = new SelectionBarController(editorController).getPanelRoot();
+        selectionBarPane.getStyleClass().add("selection-bar-container");
         Node contentView = contentPanelController.getPanelRoot();
+        VBox contentBox = new VBox(selectionBarPane, contentView);
+        return contentBox;
+    }
 
-        // right
-        Node inspectorView = new InspectorPanelController(editorController).getPanelRoot();
-        SplitPane.setResizableWithParent(inspectorView, Boolean.FALSE);
+    private Node createRightSide() {
+        // Inspector
+        Label inspectorLabel = new Label(resources.getString("right.inspector"));
+        inspectorLabel.setMinWidth(Double.NEGATIVE_INFINITY);
+        inspectorLabel.setMaxWidth(Double.NEGATIVE_INFINITY);
+        HBox.setHgrow(inspectorLabel, Priority.NEVER);
+        SearchController inspectorSearchController = new SearchController(editorController);
+        Parent searchInspectorPane = inspectorSearchController.getPanelRoot();
+        HBox.setHgrow(searchInspectorPane, Priority.ALWAYS);
 
-        SplitPane mainPane = new SplitPane(leftPane, contentView, inspectorView);
-        mainPane.setDividerPositions(0.25, 0.75);
-        return mainPane;
+        Region region = new Region();
+        region.getStyleClass().add("cog-shape");
+        ToggleGroup inspectorShowTG = new ToggleGroup();
+        MenuButton inspectorMenuButton = new MenuButton(null, region);
+        RadioMenuItem inspectorShowAll = new RadioMenuItem(resources.getString("inspector.show.all"));
+        inspectorShowAll.setToggleGroup(inspectorShowTG);
+        inspectorShowAll.setSelected(true);
+        RadioMenuItem inspectorShowEdited = new RadioMenuItem(resources.getString("inspector.show.edited"));
+        inspectorShowEdited.setToggleGroup(inspectorShowTG);
+
+        ToggleGroup inspectorViewTG = new ToggleGroup();
+        RadioMenuItem inspectorViewSections = new RadioMenuItem(resources.getString("inspector.view.sections"));
+        inspectorViewSections.setToggleGroup(inspectorViewTG);
+        inspectorViewSections.setSelected(true);
+        RadioMenuItem inspectorViewByPropertyName = new RadioMenuItem(resources.getString("inspector.by.property.name"));
+        inspectorViewByPropertyName.setToggleGroup(inspectorViewTG);
+        RadioMenuItem inspectorViewByPropertyType = new RadioMenuItem(resources.getString("inspector.by.property.type"));
+        inspectorViewByPropertyType.setToggleGroup(inspectorViewTG);
+        inspectorMenuButton.getItems().addAll(inspectorShowAll, inspectorShowEdited,
+                new SeparatorMenuItem(),
+                inspectorViewSections, inspectorViewByPropertyName, inspectorViewByPropertyType);
+
+        HBox hBoxInspectorTop = new HBox(inspectorLabel, searchInspectorPane, inspectorMenuButton);
+        hBoxInspectorTop.getStyleClass().add("panel-header");
+        hBoxInspectorTop.setAlignment(Pos.CENTER_LEFT);
+
+        InspectorPanelController inspectorPanelController = new InspectorPanelController(editorController);
+        inspectorShowAll.setOnAction(e -> inspectorPanelController.setShowMode(InspectorPanelController.ShowMode.ALL));
+        inspectorShowEdited.setOnAction(e -> inspectorPanelController.setShowMode(InspectorPanelController.ShowMode.EDITED));
+        inspectorViewSections.setOnAction(e -> inspectorPanelController.setViewMode(InspectorPanelController.ViewMode.SECTION));
+        inspectorViewByPropertyName.setOnAction(e -> inspectorPanelController.setViewMode(InspectorPanelController.ViewMode.PROPERTY_NAME));
+        inspectorViewByPropertyType.setOnAction(e -> inspectorPanelController.setViewMode(InspectorPanelController.ViewMode.PROPERTY_TYPE));
+        inspectorSearchController.textProperty().subscribe((ov, nv) -> inspectorPanelController.setSearchPattern(nv));
+        Node inspectorView = inspectorPanelController.getPanelRoot();
+        VBox rightBox = new VBox(hBoxInspectorTop, inspectorView);
+        SplitPane.setResizableWithParent(rightBox, Boolean.FALSE);
+        return rightBox;
     }
 
     private void createCustomLibrary(List<Path> paths) {

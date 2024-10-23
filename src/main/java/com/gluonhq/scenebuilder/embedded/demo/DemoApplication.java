@@ -57,7 +57,7 @@ public class DemoApplication extends Application {
         saveButton.setOnAction(sceneBuilderPane.saveFXMLHandler());
 
         HBox top = new HBox(50, newButton, fileButton, saveButton);
-        top.setPadding(new Insets(20));
+        top.setPadding(new Insets(5));
         top.setAlignment(Pos.CENTER);
 
         BorderPane root = new BorderPane(sceneBuilderPane);
