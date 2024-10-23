@@ -33,18 +33,20 @@ package com.gluonhq.scenebuilder.embedded;
 
 import com.oracle.javafx.scenebuilder.kit.editor.EditorController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.content.ContentPanelController;
+import com.oracle.javafx.scenebuilder.kit.editor.panel.hierarchy.AbstractHierarchyPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.hierarchy.HierarchyPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.info.InfoPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.inspector.InspectorPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.panel.library.LibraryPanelController;
 import com.oracle.javafx.scenebuilder.kit.editor.search.SearchController;
-import com.oracle.javafx.scenebuilder.kit.fxom.FXOMDocument;
 import com.oracle.javafx.scenebuilder.kit.library.BuiltinLibrary;
 import com.oracle.javafx.scenebuilder.kit.library.Library;
 import com.oracle.javafx.scenebuilder.kit.library.user.UserLibrary;
 import com.oracle.javafx.scenebuilder.kit.preferences.MavenPreferences;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -57,20 +59,12 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
+import java.util.ResourceBundle;
 
 import static com.oracle.javafx.scenebuilder.kit.editor.EditorPlatform.IS_LINUX;
 import static com.oracle.javafx.scenebuilder.kit.editor.EditorPlatform.IS_MAC;
@@ -78,15 +72,45 @@ import static com.oracle.javafx.scenebuilder.kit.editor.EditorPlatform.IS_WINDOW
 
 public class SceneBuilderPane extends StackPane {
 
-    public SceneBuilderPane() {
+    private final EditorController editorController = new EditorController();
+    private final AbstractHierarchyPanelController hierarchyPanelController = new HierarchyPanelController(editorController);
+    private final ContentPanelController contentPanelController = new ContentPanelController(editorController);
+    private final ResourceBundle resources = ResourceBundle.getBundle("com.gluonhq.scenebuilder.embedded.sb");
+    private final SBController sbController;
 
+    public SceneBuilderPane() {
         Node mainPane = createSBPane();
         getStyleClass().add("theme-presets");
         getStylesheets().add(SceneBuilderPane.class.getResource("sb.css").toExternalForm());
         getChildren().addAll(mainPane);
+        sbController = new SBController(this);
+
+        sbController.newFXML();
     }
 
-    private final EditorController editorController = new EditorController();
+    public EventHandler<ActionEvent> newFXMLHandler() {
+        return e -> sbController.newFXML();
+    }
+
+    public EventHandler<ActionEvent> openFXMLHandler() {
+        return e -> sbController.openFXML();
+    }
+
+    public EventHandler<ActionEvent> saveFXMLHandler() {
+        return e -> sbController.saveFXML();
+    }
+
+    EditorController getEditorController() {
+        return editorController;
+    }
+
+    AbstractHierarchyPanelController getHierarchyPanelController() {
+        return hierarchyPanelController;
+    }
+
+    ContentPanelController getContentPanelController() {
+        return contentPanelController;
+    }
 
     private Node createSBPane() {
         // left
@@ -109,6 +133,11 @@ public class SceneBuilderPane extends StackPane {
                         public void invalidated(Observable observable) {
                             if (getScene().getWindow() != null) {
                                 editorController.setOwnerWindow((Stage) getScene().getWindow());
+
+                                // custom library from module path and class path
+                                List<Path> scan = DependenciesScanner.scan();
+                                createCustomLibrary(scan);
+
                                 getScene().windowProperty().removeListener(this);
                             }
                         }
@@ -118,7 +147,7 @@ public class SceneBuilderPane extends StackPane {
             }
         });
 
-        Label libraryLabel = new Label("Library");
+        Label libraryLabel = new Label(resources.getString("left.library"));
         libraryLabel.setMinWidth(Double.NEGATIVE_INFINITY);
         libraryLabel.setMaxWidth(Double.NEGATIVE_INFINITY);
         HBox.setHgrow(libraryLabel, Priority.NEVER);
@@ -130,15 +159,15 @@ public class SceneBuilderPane extends StackPane {
         Node libraryView = new LibraryPanelController(editorController, new MavenPreferences()).getPanelRoot();
         VBox vBoxTop = new VBox(hBoxTop, libraryView);
 
-        Label documentLabel = new Label("Document");
+        Label documentLabel = new Label(resources.getString("left.document"));
         HBox hBoxBottom = new HBox(documentLabel);
         hBoxBottom.getStyleClass().add("panel-header");
         hBoxBottom.setAlignment(Pos.CENTER_LEFT);
 
-        Node hierarchyView = new HierarchyPanelController(editorController).getPanelRoot();
-        TitledPane hierarchyPane = new TitledPane("Hierarchy", hierarchyView);
+        Node hierarchyView = hierarchyPanelController.getPanelRoot();
+        TitledPane hierarchyPane = new TitledPane(resources.getString("left.hierarchy"), hierarchyView);
         Node controllerView = new InfoPanelController(editorController).getPanelRoot();
-        TitledPane controllerPane = new TitledPane("Controller", controllerView);
+        TitledPane controllerPane = new TitledPane(resources.getString("left.controller"), controllerView);
         Accordion accordion = new Accordion(hierarchyPane, controllerPane);
         accordion.setExpandedPane(hierarchyPane);
         VBox vBoxBottom = new VBox(hBoxBottom, accordion);
@@ -148,7 +177,7 @@ public class SceneBuilderPane extends StackPane {
         SplitPane.setResizableWithParent(leftPane, Boolean.FALSE);
 
         //center
-        Node contentView = new ContentPanelController(editorController).getPanelRoot();
+        Node contentView = contentPanelController.getPanelRoot();
 
         // right
         Node inspectorView = new InspectorPanelController(editorController).getPanelRoot();
@@ -156,64 +185,10 @@ public class SceneBuilderPane extends StackPane {
 
         SplitPane mainPane = new SplitPane(leftPane, contentView, inspectorView);
         mainPane.setDividerPositions(0.25, 0.75);
-        newFXML();
         return mainPane;
     }
 
-    public void newFXML() {
-        try {
-            editorController.setFxmlText("", false);
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    public void openFXML(URL url) {
-        try {
-            String content = FXOMDocument.readContentFromURL(url);
-            editorController.setFxmlTextAndLocation(content, url);
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    public void saveFXML(Stage stage) {
-        if (editorController.canGetFxmlText()) {
-            final FileChooser fileChooser = new FileChooser();
-            final FileChooser.ExtensionFilter f = new FileChooser.ExtensionFilter("FXML Document", "*.fxml"); //NOI18N
-            fileChooser.getExtensionFilters().add(f);
-            fileChooser.setInitialDirectory(EditorController.getNextInitialDirectory());
-            File fxmlFile = fileChooser.showSaveDialog(stage);
-            if (fxmlFile != null) {
-                final URL newLocation;
-                try {
-                    newLocation = fxmlFile.toURI().toURL();
-                } catch (MalformedURLException e) {
-                    throw new RuntimeException("Error", e);
-                }
-                editorController.setFxmlLocation(newLocation);
-                EditorController.updateNextInitialDirectory(fxmlFile);
-
-                final FXOMDocument fxomDocument = editorController.getFxomDocument();
-                final Path fxmlPath;
-                try {
-                    fxmlPath = Paths.get(fxomDocument.getLocation().toURI());
-                } catch (URISyntaxException e) {
-                    // Should not happen
-                    throw new RuntimeException("Error", e);
-                }
-                try {
-                    final byte[] fxmlBytes = editorController.getFxmlText(true).getBytes(StandardCharsets.UTF_8);
-                    Files.write(fxmlPath, fxmlBytes);
-                } catch (Exception e) {
-                    throw new RuntimeException("Error", e);
-                }
-
-            }
-        }
-    }
-
-    public void createCustomLibrary(List<Path> paths) {
+    private void createCustomLibrary(List<Path> paths) {
         UserLibrary userLibrary = new UserLibrary(getUserLibraryFolder(), () -> paths, List::of);
         userLibrary.setOnUpdatedJarReports(jarReports -> {});
         userLibrary.startWatching();

@@ -31,7 +31,6 @@
  */
 package com.gluonhq.scenebuilder.embedded.demo;
 
-import com.gluonhq.scenebuilder.embedded.DependenciesScanner;
 import com.gluonhq.scenebuilder.embedded.SceneBuilderPane;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -40,13 +39,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
-import java.io.File;
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.util.List;
 
 public class DemoApplication extends Application {
 
@@ -55,24 +48,13 @@ public class DemoApplication extends Application {
         SceneBuilderPane sceneBuilderPane = new SceneBuilderPane();
 
         Button newButton = new Button("New FXML");
-        newButton.setOnAction(e -> sceneBuilderPane.newFXML());
+        newButton.setOnAction(sceneBuilderPane.newFXMLHandler());
 
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Open FXML File");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("FXML Files", "*.fxml"));
         Button fileButton = new Button("Open FXML File");
-        fileButton.setOnAction(e -> {
-            File file = fileChooser.showOpenDialog(stage);
-            if (file != null) {
-                try {
-                    sceneBuilderPane.openFXML(file.toURI().toURL());
-                } catch (MalformedURLException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-        });
+        fileButton.setOnAction(sceneBuilderPane.openFXMLHandler());
+
         Button saveButton = new Button("Save FXML");
-        saveButton.setOnAction(e -> sceneBuilderPane.saveFXML(stage));
+        saveButton.setOnAction(sceneBuilderPane.saveFXMLHandler());
 
         HBox top = new HBox(50, newButton, fileButton, saveButton);
         top.setPadding(new Insets(20));
@@ -84,10 +66,6 @@ public class DemoApplication extends Application {
         stage.setTitle("Hello Embedded Scene Builder Demo!");
         stage.setScene(scene);
         stage.show();
-
-        // custom library from module path and class path
-        List<Path> scan = DependenciesScanner.scan();
-        sceneBuilderPane.createCustomLibrary(scan);
     }
 
     public static void main(String[] args) {
