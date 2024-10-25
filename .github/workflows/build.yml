@@ -1,0 +1,159 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+env:
+  JAVA_RELEASE: '23'
+  JAVA_VERSION: '23.0.1'
+  JAVAFX_VERSION: '23.0.1'
+  APP_VERSION: '1.0.0'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ macos-13, macos-14, ubuntu-latest, windows-latest ]
+        include:
+          - os: macos-13
+            ARCH: "-amd64"
+            PLAT: "macos"
+            FX: "osx-x64"
+          - os: macos-14
+            ARCH: "-aarch64"
+            PLAT: "macos"
+            FX: "osx-aarch64"
+          - os: ubuntu-latest
+            ARCH: ""
+            PLAT: "linux"
+            FX: "linux-x64"
+          - os: windows-latest
+            ARCH: ""
+            PLAT: "win"
+            FX: "windows-x64"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: oracle-actions/setup-java@v1.4.0
+        with:
+          website: jdk.java.net
+          release: ${{ env.JAVA_RELEASE }}
+          version: ${{ env.JAVA_VERSION }}
+
+      - uses: Apple-Actions/import-codesign-certs@v3
+        if: github.event_name != 'pull_request' && (matrix.os == 'macos-13' || matrix.os == 'macos-14')
+        with:
+          p12-file-base64: ${{ secrets.CERTIFICATES_FILE_BASE64 }}
+          p12-password: ${{ secrets.CERTIFICATES_PASSWORD }}
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build and package Jar (non-windows)
+        if: matrix.os != 'windows-latest'
+        run: mvn -B -ntp -q clean package -Dmaven.test.skip=true
+
+      - name: Build and package Jar (windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: call mvn -B -ntp package -Dmaven.test.skip=true
+
+      - name: Create Bundle using jpackage for macos
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
+        id: outputfile_mac
+        run: |
+          if [[ ${{ github.event_name }} != 'pull_request' ]]; then
+          .github/scripts/jpackage.sh \
+            --type dmg \
+            --mac-package-identifier com.gluonhq.scenebuilder.embedded.Demo \
+            --mac-package-name 'Embedded SB Demo' \
+            --mac-package-signing-prefix "${{ env.MACSIGN_PREFIX }}" \
+            --mac-signing-key-user-name "${{ env.MACSIGN_USER }}" \
+            --mac-sign
+          else
+          .github/scripts/build_app_mac.sh \
+            --type dmg \
+            --mac-package-identifier com.gluonhq.scenebuilder.embedded.Demo \
+            --mac-package-name 'Embedded SB Demo'
+          fi
+          mv target/installer/EmbeddedSceneBuilderDemo-${{ env.APP_VERSION }}.dmg target/installer/EmbeddedSceneBuilderDemo-${{ env.APP_VERSION }}${{ matrix.ARCH }}.dmg
+          echo path=target/installer/EmbeddedSceneBuilderDemo-${{ env.APP_VERSION }}${{ matrix.ARCH }}.dmg >> $GITHUB_OUTPUT
+        env:
+          JPACKAGE_HOME: ${{ env.JAVA_HOME }}
+          MACSIGN_PREFIX: ${{ secrets.GLUON_MACSIGN_PREFIX }}
+          MACSIGN_USER: ${{ secrets.GLUON_MACSIGN_USER }}
+          APP_VERSION: ${{ env.APP_VERSION }}
+
+      - name: Create Bundle using jpackage for linux
+        if: matrix.os == 'ubuntu-latest'
+        id: outputfile_linux
+        run: |
+          .github/scripts/jpackage.sh \
+            --type deb
+          echo path_deb=target/installer/embeddedscenebuilderdemo_${{ env.APP_VERSION }}_amd64.deb >> $GITHUB_OUTPUT
+          .github/scripts/jpackage.sh \
+            --type rpm
+          ls -l target/installer/
+          echo path_rpm=target/installer/embeddedscenebuilderdemo-${{ env.APP_VERSION }}-1.x86_64.rpm >> $GITHUB_OUTPUT
+        env:
+          JPACKAGE_HOME: ${{ env.JAVA_HOME }}
+          APP_VERSION: ${{ env.APP_VERSION }}
+
+      - name: Create Bundle using jpackage for windows
+        if: matrix.os == 'windows-latest'
+        id: outputfile_win
+        shell: cmd
+        run: |
+          call .github\scripts\jpackage.bat
+          echo path=target\installer\EmbeddedSceneBuilderDemo-${{ env.APP_VERSION }}.msi >> %GITHUB_OUTPUT%
+        env:
+          JPACKAGE_HOME: ${{ env.JAVA_HOME }}
+          APP_VERSION: ${{ env.APP_VERSION }}
+
+      - name: Notarize Release Build
+        if: github.event_name != 'pull_request' && (matrix.os == 'macos-13' || matrix.os == 'macos-14')
+        uses: erwin1/xcode-notarizer@v1
+        with:
+          product-path: ${{ steps.outputfile_mac.outputs.path }}
+          apple-id: ${{ secrets.NOTARIZATION_USERNAME }}
+          app-password: ${{ secrets.NOTARIZATION_PASSWORD }}
+          team-id: ${{ secrets.GLUON_MACSIGN_PREFIX }}
+
+      - name: Archive jpackage for macos
+        if: matrix.os == 'macos-13' || matrix.os == 'macos-14'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmbeddedSceneBuilderDemo-${{ matrix.PLAT }}${{ matrix.ARCH }}
+          path: ${{ steps.outputfile_mac.outputs.path }}
+
+      - name: Archive jpackage for linux deb
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmbeddedSceneBuilderDemo-${{ matrix.PLAT }}${{ matrix.ARCH }}-deb
+          path: ${{ steps.outputfile_linux.outputs.path_deb }}
+
+      - name: Archive jpackage for linux rpm
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmbeddedSceneBuilderDemo-${{ matrix.PLAT }}${{ matrix.ARCH }}-rpm
+          path: ${{ steps.outputfile_linux.outputs.path_rpm }}
+
+      - name: Archive jpackage for windows
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmbeddedSceneBuilderDemo-${{ matrix.PLAT }}${{ matrix.ARCH }}
+          path: ${{ steps.outputfile_win.outputs.path }}

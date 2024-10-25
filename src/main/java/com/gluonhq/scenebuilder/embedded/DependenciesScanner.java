@@ -104,7 +104,7 @@ public class DependenciesScanner {
             return false;
         }
         return name.startsWith("java.") || name.startsWith("jdk.") || name.startsWith("javafx.") ||
-                name.startsWith("oracle.") || name.startsWith("com.gluonhq.scenebuilder.") || "EmbeddedSceneBuilderContainer".equals(name);
+                name.startsWith("oracle.") || name.startsWith("com.gluonhq.scenebuilder.") || "EmbeddedSceneBuilderDemo".equals(name);
     }
 
     public static List<Path> scan() {

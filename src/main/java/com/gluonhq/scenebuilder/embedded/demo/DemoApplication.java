@@ -40,6 +40,7 @@ import javafx.scene.control.Button;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.controlsfx.control.ToggleSwitch;
 
 public class DemoApplication extends Application {
 
@@ -56,7 +57,7 @@ public class DemoApplication extends Application {
         Button saveButton = new Button("Save FXML");
         saveButton.setOnAction(sceneBuilderPane.saveFXMLHandler());
 
-        HBox top = new HBox(50, newButton, fileButton, saveButton);
+        HBox top = new HBox(50, newButton, fileButton, saveButton, new ToggleSwitch());
         top.setPadding(new Insets(5));
         top.setAlignment(Pos.CENTER);
 

@@ -34,6 +34,7 @@ module EmbeddedSceneBuilderDemo {
     requires javafx.fxml;
     requires com.gluonhq.scenebuilder.kit;
     requires org.controlsfx.controls;
+    requires java.logging;
 
     uses com.oracle.javafx.scenebuilder.kit.i18n.spi.I18NResourcesProvider;
     opens com.gluonhq.scenebuilder.embedded to javafx.fxml;
