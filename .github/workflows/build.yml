@@ -55,6 +55,7 @@ jobs:
 
       - name: Cache Maven packages
         uses: actions/cache@v4
+        if: false # while using snapshots
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
