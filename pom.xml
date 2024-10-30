@@ -28,7 +28,7 @@
         <dependency>
             <groupId>com.gluonhq.scenebuilder</groupId>
             <artifactId>kit</artifactId>
-            <version>24.0.0-SNAPSHOT</version>
+            <version>24.0.0-RC1</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.maven.resolver</groupId>
@@ -54,13 +54,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <repositories>
-        <repository>
-            <id>sonatype-snapshots</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
 
     <build>
         <plugins>
