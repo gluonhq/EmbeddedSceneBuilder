@@ -83,7 +83,7 @@ jobs:
             --mac-signing-key-user-name "${{ env.MACSIGN_USER }}" \
             --mac-sign
           else
-          .github/scripts/build_app_mac.sh \
+          .github/scripts/jpackage.sh \
             --type dmg \
             --mac-package-identifier com.gluonhq.scenebuilder.embedded.Demo \
             --mac-package-name 'Embedded SB Demo'
