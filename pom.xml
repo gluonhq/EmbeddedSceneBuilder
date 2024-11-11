@@ -71,6 +71,7 @@
                         EmbeddedSceneBuilderDemo/com.gluonhq.scenebuilder.embedded.demo.DemoApplication
                     </mainClass>
                     <options>
+                        <option>-Djavafx.allowjs=true</option>
                         <option>--add-opens=javafx.fxml/javafx.fxml=com.gluonhq.scenebuilder.kit</option>
                     </options>
                 </configuration>
