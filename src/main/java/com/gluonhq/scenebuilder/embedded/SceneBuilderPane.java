@@ -46,6 +46,7 @@ import com.oracle.javafx.scenebuilder.kit.preferences.MavenPreferences;
 import com.oracle.javafx.scenebuilder.kit.selectionbar.SelectionBarController;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
@@ -71,6 +72,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
 
 import static com.oracle.javafx.scenebuilder.kit.editor.EditorPlatform.IS_LINUX;
 import static com.oracle.javafx.scenebuilder.kit.editor.EditorPlatform.IS_MAC;
@@ -129,28 +131,15 @@ public class SceneBuilderPane extends StackPane {
             }
         };
         editorController.setLibrary(library);
-        sceneProperty().addListener(new InvalidationListener() {
-            @Override
-            public void invalidated(Observable observable) {
-                if (getScene() != null) {
-                    getScene().getStylesheets().add(SceneBuilderPane.class.getResource("sb.css").toExternalForm());
-                    getScene().windowProperty().addListener(new InvalidationListener() {
-                        @Override
-                        public void invalidated(Observable observable) {
-                            if (getScene().getWindow() != null) {
-                                editorController.setOwnerWindow((Stage) getScene().getWindow());
 
-                                // custom library from module path and class path
-                                List<Path> scan = DependenciesScanner.scan();
-                                createCustomLibrary(scan);
-
-                                getScene().windowProperty().removeListener(this);
-                            }
-                        }
-                    });
-                    sceneProperty().removeListener(this);
-                }
-            }
+        executeOnceWhenPropertyIsNonNull(sceneProperty(), scene -> {
+            scene.getStylesheets().add(SceneBuilderPane.class.getResource("sb.css").toExternalForm());
+            executeOnceWhenPropertyIsNonNull(scene.windowProperty(), window -> {
+                editorController.setOwnerWindow((Stage) window);
+                // custom library from module path and class path
+                List<Path> scan = DependenciesScanner.scan();
+                createCustomLibrary(scan);
+            });
         });
 
         SplitPane mainPane = new SplitPane(createLeftSide(), createCenter(), createRightSide());
@@ -331,5 +320,26 @@ public class SceneBuilderPane extends StackPane {
             userLibraryFolder = getApplicationDataFolder() + "/Library";
         }
         return userLibraryFolder;
+    }
+
+    private static <T> void executeOnceWhenPropertyIsNonNull(ObservableValue<T> p, Consumer<T> consumer) {
+        if (p == null) return;
+
+        T value = p.getValue();
+        if (value != null) {
+            consumer.accept(value);
+        } else {
+            final InvalidationListener listener = new InvalidationListener() {
+                @Override public void invalidated(Observable observable) {
+                    T value = p.getValue();
+
+                    if (value != null) {
+                        p.removeListener(this);
+                        consumer.accept(value);
+                    }
+                }
+            };
+            p.addListener(listener);
+        }
     }
 }
